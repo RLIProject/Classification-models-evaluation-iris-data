@@ -1,0 +1,308 @@
+---
+title: "Iris data classification modeling"
+author: "Gloria li"
+date: "2/23/2019"
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+
+# Introduction
+
+This is my first machine learning project using R at Kaggle. I chose iris as the data set I work with because it is perhaps the best known database to be found in the pattern recognition literature. Altough it is simple, but very classic. In this project, I will do some data exploring first, then do some visualizations. I will try to build serveral models to predicate the classfication. Finaly I will compare the accuracy resluts among those models. Comments are welcome! 
+
+
+# Knowing the data
+## Load the package
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse) # visualization/processing
+library(lattice)# visualization
+library(ggpubr) # for multiple plots
+library(GGally) # for pairplots
+library(caret)  # machine learning models
+```
+
+## Import the data
+```{r, message=FALSE, warning=FALSE}
+dataset <- read.csv("../input/Iris.csv")
+
+```
+
+## Check data by using different methods
+We begin by getting an idea of dimensions, size and attributes of the data we are working on.
+```{r, message=FALSE, warning=FALSE}
+head(dataset,3)#top 3 rows
+tail(dataset,3)#bottom 3 rows
+dim(dataset)#shape
+names(dataset)#variables
+str(dataset)#structures
+lapply(dataset, function(x) length(unique(x))) # Unique values per column
+
+```
+So we have started to know some about the data.  The data set consists of 50 samples from each of three species of Iris (Iris setosa, Iris virginica and Iris versicolor). Four features were measured from each sample: the length and the width of the sepals and petals, in centimeters. Based on the combination of these four features, we have to develope some models to distinguish the species from each other.
+
+Variables Information:
+1. Id: obervation # ;
+2. SepalLengthCm: sepal length in cm  ;
+3. SepalWidthCm: sepal width in cm    ;
+4. PetalLengthCm: petal length in cm   ;
+5. PetalWidthCm: petal width in cm  ; 
+6. Species: 
+-- Iris-setosa   ;
+-- Iris-versicolor   ;
+-- Iris-virginica   ;
+
+```{r, message=FALSE, warning=FALSE}
+summary(dataset)#summary of the data
+
+```
+Observation: Checking the scales of features is very important. Sepal length ranges from 4.3-7.9, Sepal width range: 2-4.4, Petal length range:1-6.9, Petal width:0.1-2.5. The ranges bascially are from 0 to 10, so we don't have to do scaling before the building the models.
+
+# Clean the data
+## Any missing values?
+```{r, message=FALSE, warning=FALSE}
+
+sum(is.na(dataset))#check overall
+dataset %>% 
+  summarize_all(funs(sum(is.na(.))/n())) #check each column
+```
+No missing values... very good...
+
+## remove Id for easy processing data
+```{r, message=FALSE, warning=FALSE}
+data<- dataset[,-1]
+head(data)#check if Id removed or not
+```
+
+## Remove duplicate info in Species variable
+I remove duplicate info (Iris-) in the Species for better visulation in the following step
+```{r, message=FALSE, warning=FALSE}
+data$Species <- sapply(strsplit(as.character(data$Species),'-'), "[", 2)
+str(data) #check the data again and found Species became character
+data$Species <- as.factor(data$Species)#change Species as factor
+str(data)#check again, Species is factor variable now
+```
+
+
+# Visualization
+
+## Why plots?
+
+To further dig the data, we need to check basic statistics indexes of the data including mean/standard deviation/count/max/min value for each numeric variables
+
+```{r, message=FALSE, warning=FALSE}
+describle_datatable <- data %>% 
+  group_by(Species) %>% 
+  summarise_if(is.numeric,funs(mean, sd,n(), max, min))
+  
+t(describle_datatable) #transpose for easy checking
+
+```
+Not easy to get more insights? so plots...
+
+## boxplot
+We begin by using boxplots to understand the distribution of attributes for each Species.
+```{r, message=FALSE, warning=FALSE}
+p1 <- ggplot(data, aes(x = Species, y = SepalLengthCm,colour=Species)) +
+  geom_boxplot() +
+  geom_jitter(shape=16, position=position_jitter(0.1))+
+  theme(legend.position="none") # Remove legend
+
+p2 <- ggplot(data, aes(x = Species, y = SepalWidthCm,colour=Species)) +
+  geom_boxplot() +
+  geom_jitter(shape=16, position=position_jitter(0.1))+
+  theme(legend.position="none") # Remove legend
+
+
+p3 <- ggplot(data, aes(x = Species, y = PetalLengthCm,colour=Species)) +
+  geom_boxplot() +
+  geom_jitter(shape=16, position=position_jitter(0.1))+
+  theme(legend.position="none") # Remove legend
+
+
+p4 <- ggplot(data, aes(x = Species, y = PetalWidthCm,colour=Species)) +
+  geom_boxplot() +
+  geom_jitter(shape=16, position=position_jitter(0.1))+
+  theme(legend.position="none") # Remove legend
+
+
+ggarrange(p1,p2,p3,p4, 
+          labels = c("A", "B", "C","D"),
+          ncol = 2, nrow = 2)
+```
+
+From above boxplots, we can see that virginica has a bigger petal and bigger sepal length, however sentosa has a smaller petal, but bigger sepal length..
+
+## pairplot
+To understand relationships between atrributes, let's do the pairplots (package: GGally)
+```{r, message=FALSE, warning=FALSE}
+head(data)
+ggpairs(data, columns=1:4, aes(color=Species)) + 
+  ggtitle("Iris Data by Species")
+
+```
+
+Petal width and Petal length have a strong linear correlation relationship. 
+
+## scatterplot
+```{r, message=FALSE, warning=FALSE}
+ggplot(data, aes(x =SepalWidthCm , y = SepalLengthCm  , color = Species))+
+  geom_point()+               
+  geom_smooth(method="loess", aes(fill= Species, color = Species))+
+  facet_wrap(~Species, ncol = 3, nrow = 1)
+
+
+ggplot(data, aes(x = PetalWidthCm , y =PetalLengthCm  , color = Species))+
+  geom_point()+               
+  geom_smooth(method="lm", aes(fill= Species, color = Species))+
+  facet_wrap(~Species, ncol = 3, nrow = 1)
+
+```
+
+Versicolor's petal widith and length has a strong linear relationgship. Could we guess: petal width and petal length might be the key features for classfication? Just guess.. we need to do the predication.
+
+# Splitting the data for training and testing
+
+```{r, message=FALSE, warning=FALSE}
+set.seed(101)
+# We use the dataset to create a partition (80% training 20% testing)
+id <- createDataPartition(data$Species, p=0.80, list=FALSE)
+
+# select 80% of data to train the models
+train <- data[id,]
+dim(train)
+
+# select 20% of the data for testing
+test <- data[-id,]
+dim(test)
+
+#review the train dataset to confirm the Species are randomly selected
+lapply(train, function(x) length(unique(x))) 
+table(train$Species)
+summary(train)
+str(train)
+```
+Observation- 
+1.The train dataset has 120 observations while test dataset has 30.
+2.Each class has the same number of instances (40).
+
+# Model building
+
+## Model 1: Cart Model: Decision tree
+```{r, message=FALSE, warning=FALSE}
+set.seed(101)
+
+cart_model <- train(train[,1:4], train[, 5], method='rpart2')
+
+# Predict the labels of the test set
+predictions<-predict(cart_model,test[,1:4])
+
+# Evaluate the predictions
+table(predictions)
+
+# Confusion matrix 
+confusionMatrix(predictions,test[,5])
+
+#feature importance
+importance_cart <- varImp(cart_model)
+plot(importance_cart, main="Variable Importance with cart_model")
+
+```
+
+
+As suspected, Petal Width is the most used variable, followed by Petal Length and Sepal Length.
+
+
+## Model 2 KNN
+
+```{r, message=FALSE, warning=FALSE}
+# Train the model with preprocessing
+set.seed(101)
+
+knn_model <- train(train[, 1:4], train[, 5], method='knn', 
+                   preProcess=c("center", "scale"))
+
+# Predict values
+predictions<-predict(knn_model,test[,1:4], type="raw")
+
+# Confusion matrix
+confusionMatrix(predictions,test[,5])
+
+#feature importance
+importance_knn <- varImp(knn_model)
+plot(importance_knn, main="Variable Importance with knn_model")
+
+
+```
+
+
+
+## Model 3 Neural Network
+```{r, message=FALSE, warning=FALSE}
+# Train the model with preprocessing
+set.seed(101)
+nnet_model <- train(train[, 1:4], train[, 5], method='nnet', 
+                   preProcess=c("center", "scale"), 
+                   tuneLength = 2,
+                   trace = FALSE,
+                   maxit = 100)
+
+# Predict values
+predictions<-predict(nnet_model,test[,1:4], type="raw")
+
+# Confusion matrix
+confusionMatrix(predictions,test[,5])
+
+#feature importance
+importance_nnet <- varImp(nnet_model);importance_nnet
+
+```
+
+
+
+## Model 4 Randomforest
+```{r, message=FALSE, warning=FALSE}
+
+# Train the model with preprocessing
+set.seed(101)
+randomforest_model <- train(train[, 1:4], train[, 5], method='rf')
+
+# Predict values
+predictions<-predict(randomforest_model,test[,1:4], type="raw")
+
+# Confusion matrix
+confusionMatrix(predictions,test[,5])
+
+#feature importance
+importance_rf <- varImp(randomforest_model)
+plot(importance_rf, main="Variable Importance with randomforest_model")
+
+```
+
+## Compare model performances 
+```{r, message=FALSE, warning=FALSE}
+models_compare <- resamples(list(cart_model,knn_model, nnet_model,randomforest_model))
+
+# Summary of the models performances
+summary(models_compare)
+```
+From the accuracy resluts, neural network model works best among the 4 models. Also, Petal Width and Petal Length are the key features for the classification.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
