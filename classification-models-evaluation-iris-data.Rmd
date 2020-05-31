@@ -14,7 +14,7 @@ output:
 
 # Introduction
 
-This is my first machine learning project using R at Kaggle. I chose iris as the data set I work with because it is perhaps the best known database to be found in the pattern recognition literature. Altough it is simple, but very classic. In this project, I will do some data exploring first, then do some visualizations. I will try to build serveral models to predicate the classfication. Finaly I will compare the accuracy resluts among those models. Comments are welcome! 
+iris is perhaps the best known database to be found in the pattern recognition literature. Although it is simple, but very classic. In this project, I will do some data exploring first, then do some visualizations. I will try to build several models to predicate the classification. Finally I will compare the accuracy results among those models. Comments are welcome! 
 
 
 # Knowing the data
@@ -29,7 +29,7 @@ library(caret)  # machine learning models
 
 ## Import the data
 ```{r, message=FALSE, warning=FALSE}
-dataset <- read.csv("../input/Iris.csv")
+dataset <- data(iris)
 
 ```
 
@@ -61,7 +61,7 @@ Variables Information:
 summary(dataset)#summary of the data
 
 ```
-Observation: Checking the scales of features is very important. Sepal length ranges from 4.3-7.9, Sepal width range: 2-4.4, Petal length range:1-6.9, Petal width:0.1-2.5. The ranges bascially are from 0 to 10, so we don't have to do scaling before the building the models.
+Observation: Checking the scales of features is very important. Sepal length ranges from 4.3-7.9, Sepal width range: 2-4.4, Petal length range:1-6.9, Petal width:0.1-2.5. The ranges basically are from 0 to 10, so we don't have to do scaling before the building the models.
 
 # Clean the data
 ## Any missing values?
